@@ -47,19 +47,37 @@ class ClientWebSocketResponse(websocket_client.ClientWebSocketResponse):
 
 
 class WebSocketClientSession(object):
-    """Manages socket pooling for multiple websocket connections.
-    Based on aiohttp.ClientSession and aiohttp.BaseConnector.
-
-    :param conn_timeout: (optional) Connect timeout.
-    :param keepalive_timeout: (optional) Keep-alive timeout.
-    :param bool force_close: Set to True to force close and do reconnect
-        after each request.
-    :param loop: Optional event loop.
-    """
 
     def __init__(self, *, conn_timeout=None, force_close=False, limit=None,
                  client_session=None, loop=None,
                  ws_response_class=ClientWebSocketResponse):
+        """Manages socket pooling for multiple websocket connections.
+        Based on aiohttp.ClientSession and aiohttp.BaseConnector.
+        :param float conn_timeout: timeout for establishing connection
+                                   (optional). Values ``0`` or ``None``
+                                   mean no timeout
+
+        :param bool force_close: close underlying sockets after
+                                 releasing connection
+
+        :param int limit: limit for simultaneous connections to the same
+                          endpoint.  Endpoints are the same if they are
+                          have equal ``(host, port, is_ssl)`` triple.
+                          If *limit* is ``None`` the client has no limit
+
+        :param aiohttp.client.ClientSession: Underlying HTTP session used to
+                                             to establish websocket connections
+
+        :param loop: `event loop`
+                     used for processing HTTP requests.
+                     If param is ``None``, `asyncio.get_event_loop`
+                     is used for getting default event loop.
+                     (optional)
+
+        :param ws_response_class: WebSocketResponse class implementation.
+                                  ``ClientWebSocketResponse`` by default
+
+        """
         if loop is None:
             loop = asyncio.get_event_loop()
         self._closed = False
