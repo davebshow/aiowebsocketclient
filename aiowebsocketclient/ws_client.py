@@ -51,8 +51,8 @@ class WebSocketClientSession(object):
     """
 
     def __init__(self, *, conn_timeout=None, force_close=False, limit=None,
-                 connector=None, client_session=None, loop=None, headers=None,
-                 auth=None, ws_response_class=ClientWebSocketResponse):
+                 connector=None, client_session=None, loop=None,
+                 ws_response_class=ClientWebSocketResponse):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._closed = False
@@ -71,8 +71,8 @@ class WebSocketClientSession(object):
                                              force_close=False)
         if client_session is None:
             client_session = ClientSession(
-                loop=self._loop, connector=connector, headers=headers,
-                ws_response_class=self._ws_response_class, auth=auth)
+                loop=self._loop, connector=connector,
+                ws_response_class=self._ws_response_class)
         self._client_session = client_session
 
     @property

@@ -47,9 +47,6 @@ Usage example::
    :param aiohttp.connector.BaseConnector connector: BaseConnector
                             sub-class instance to support connection pooling.
 
-   :param dict headers: HTTP Headers to send with
-                        the request (optional)
-
    :param aiohttp.client.ClientSession: Underlying HTTP session used to
                                         to establish websocket connections
 
@@ -59,9 +56,6 @@ Usage example::
       is used for getting default event loop, but we strongly
       recommend to use explicit loops everywhere.
       (optional)
-
-   :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that represents
-                                          HTTP Basic Auth (optional)
 
    :param ws_response_class: WebSocketResponse class implementation.
                              ``ClientWebSocketResponse`` by default.
