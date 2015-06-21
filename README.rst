@@ -42,7 +42,7 @@ Usage example::
    The class for creating client sessions and making requests. Returns a
    :class:`ClientWebSocketResponse` object. This object is nearly identical to
    :class:`aiohttp.websocket_clientClientWebSocketResponse`, except it adds a
-   method ```release`` to release unused connections to the session pool.
+   method ``release`` to release unused connections to the session pool.
 
    :param float conn_timeout: timeout for establishing connection
                               (optional). Values ``0`` or ``None``
