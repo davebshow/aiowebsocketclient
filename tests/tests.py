@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import aiohttp
 from aiohttp import web
 
-from aiowebsocketclient import WebSocketClientSession, ws_connect
+from aiowebsocketclient import WebSocketClientSession
 
 
 class TestWebSocketClientFunctional(unittest.TestCase):
@@ -103,6 +103,31 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(go())
 
+    def test_closed_client_session(self):
+
+        @asyncio.coroutine
+        def go():
+            _, _, url = yield from self.create_server('GET', '/',
+                                                      self.simple_wshandler)
+
+            key = self.get_key(url)
+
+            ws_session = WebSocketClientSession(loop=self.loop)
+            resp = yield from ws_session.ws_connect(url)
+            resp.send_str('ask')
+            msg = yield from resp.receive()
+
+            self.assertEqual(msg.data, 'ask/answer')
+
+            # ws_session.client_session.close()
+            yield from resp.close()
+            self.assertFalse(ws_session._acquired[key])
+            self.assertIsNone(ws_session._conns.get(key, None))
+
+            yield from ws_session.close()
+
+        self.loop.run_until_complete(go())
+
     def test_conn_force_close(self):
 
         @asyncio.coroutine
@@ -124,23 +149,6 @@ class TestWebSocketClientFunctional(unittest.TestCase):
             self.assertIsNone(ws_session._conns.get(key, None))
 
             yield from ws_session.close()
-
-        self.loop.run_until_complete(go())
-
-    def test_ws_connect(self):
-
-        @asyncio.coroutine
-        def go():
-            _, _, url = yield from self.create_server('GET', '/',
-                                                      self.simple_wshandler)
-
-            key = self.get_key(url)
-
-            resp = yield from ws_connect(url, loop=self.loop)
-            resp.send_str('ask')
-            msg = yield from resp.receive()
-            self.assertEqual(msg.data, 'ask/answer')
-            yield from resp.close()
 
         self.loop.run_until_complete(go())
 

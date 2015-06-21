@@ -1,4 +1,5 @@
 import asyncio
+import io
 from collections import defaultdict
 from itertools import chain
 from urllib.parse import urlparse
@@ -20,6 +21,12 @@ class ClientWebSocketResponse(websocket_client.ClientWebSocketResponse):
 
         self._key = key
         self._ws_client_session = ws_client_session
+
+    def __repr__(self):
+        out = io.StringIO()
+        print('<ClientWebSocketResponse({}:{})>'.format(
+            self._key[0], self._key[1]), file=out)
+        return out.getvalue()
 
     @asyncio.coroutine
     def release(self):
@@ -51,7 +58,7 @@ class WebSocketClientSession(object):
     """
 
     def __init__(self, *, conn_timeout=None, force_close=False, limit=None,
-                 connector=None, client_session=None, loop=None,
+                 client_session=None, loop=None,
                  ws_response_class=ClientWebSocketResponse):
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -66,13 +73,9 @@ class WebSocketClientSession(object):
         self._waiters = defaultdict(list)
         self._loop = loop
         self._ws_response_class = ws_response_class
-        if connector is None:
-            connector = aiohttp.TCPConnector(loop=self._loop,
-                                             force_close=False)
         if client_session is None:
             client_session = ClientSession(
-                loop=self._loop, connector=connector,
-                ws_response_class=self._ws_response_class)
+                loop=self._loop, ws_response_class=self._ws_response_class)
         self._client_session = client_session
 
     @property
@@ -91,7 +94,7 @@ class WebSocketClientSession(object):
 
     @asyncio.coroutine
     def close(self):
-        """Close all opened websockets."""
+        """Close all opened websockets and underlying client session."""
         if self._closed:
             return
         self._closed = True
@@ -118,8 +121,7 @@ class WebSocketClientSession(object):
         """Is client closed.
         A readonly property.
         """
-        return (self._closed or self._client_session is None or
-                self._client_session.closed)
+        return self._closed
 
     @property
     def client_session(self):
@@ -219,39 +221,6 @@ class WebSocketClientSession(object):
 
     def detach(self):
         """Detach client session from websocketsession without closing
-        the former. WebSocketSession is switched to closed state anyway.
+        the former.
         """
         self._client_session = None
-
-
-@asyncio.coroutine
-def ws_connect(url, *, protocols=(), timeout=10.0, connector=None,
-               ws_response_class=ClientWebSocketResponse, autoclose=True,
-               autoping=True, loop=None):
-    """
-    Cut and paste from aiohttp.websocket_client
-    BASIC MODIFICATIONS: Use WebSocketClientSession instead of ClientSession.
-    """
-
-    if loop is None:
-        asyncio.get_event_loop()
-
-    if connector is None:
-        connector = aiohttp.TCPConnector(loop=loop, force_close=True)
-
-    ws_session = WebSocketClientSession(loop=loop, connector=connector,
-                                        ws_response_class=ws_response_class,
-                                        force_close=True)
-
-    try:
-        resp = yield from ws_session.ws_connect(
-            url,
-            protocols=protocols,
-            timeout=timeout,
-            autoclose=autoclose,
-            autoping=autoping)
-        return resp
-
-    finally:
-        ws_session.client_session.detach()
-        ws_session.detach()
