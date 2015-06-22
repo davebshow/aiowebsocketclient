@@ -6,8 +6,7 @@
 This class is based on aiohttp.ClientSession and aiohttp.BaseConnector classes.
 
 It allows you to use pooling with simulataneous websocket connections across
-various endpoints. Encapsulates the :class: `aiohttp.client.ClientSession`.
-THIS DOCUMENTATION BORROWS PARAM DESCRIPTIONS FROM aiohttp.
+various endpoints. Encapsulates the class `aiohttp.client.ClientSession`.
 
 ```python
 >>> import asyncio
