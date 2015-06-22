@@ -3,13 +3,13 @@ from setuptools import setup
 
 setup(
     name="aiowebsocketclient",
-    version="0.0.1",
+    version="0.0.2",
     url="",
     license="MIT",
     author="davebshow",
     author_email="davebshow@gmail.com",
     description="WebSocket client connection manager for aiohttp",
-    long_description=open("README.rst").read(),
+    long_description=open("README.txt").read(),
     packages=["aiowebsocketclient", "tests"],
     install_requires=[
         "aiohttp==0.16.5"

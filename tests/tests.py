@@ -6,10 +6,11 @@ from urllib.parse import urlparse
 import aiohttp
 from aiohttp import web
 
-from aiowebsocketclient import WebSocketClientSession
+from aiowebsocketclient import WebSocketConnector
 
 
 class TestWebSocketClientFunctional(unittest.TestCase):
+    """Based on aiohttp functional tests."""
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -32,7 +33,6 @@ class TestWebSocketClientFunctional(unittest.TestCase):
     def create_server(self, method, path, handler):
         app = web.Application(loop=self.loop)
         app.router.add_route(method, path, handler)
-
         port = self.find_unused_port()
         self.handler = app.make_handler()
         srv = yield from self.loop.create_server(
@@ -45,7 +45,6 @@ class TestWebSocketClientFunctional(unittest.TestCase):
     def simple_wshandler(self, request):
         ws = web.WebSocketResponse()
         ws.start(request)
-
         msg = yield from ws.receive_str()
         ws.send_str(msg + '/answer')
         yield from ws.close()
@@ -53,7 +52,6 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
     @asyncio.coroutine
     def wshandler(self, request):
-
         ws = web.WebSocketResponse()
         ws.start(request)
         while True:
@@ -87,7 +85,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
             key = self.get_key(url)
 
-            ws_session = WebSocketClientSession(loop=self.loop)
+            ws_session = WebSocketConnector(loop=self.loop)
 
             resp = yield from ws_session.ws_connect(url)
             resp.send_str('ask')
@@ -112,8 +110,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
             key = self.get_key(url)
 
-            ws_session = WebSocketClientSession(force_close=True,
-                                                loop=self.loop)
+            ws_session = WebSocketConnector(force_close=True, loop=self.loop)
             resp = yield from ws_session.ws_connect(url)
             resp.send_str('ask')
             msg = yield from resp.receive()
@@ -145,7 +142,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
             key = self.get_key(url)
 
-            ws_session = WebSocketClientSession(loop=self.loop)
+            ws_session = WebSocketConnector(loop=self.loop)
             resp = yield from ws_session.ws_connect(url)
             resp.send_str('ask')
             msg = yield from resp.receive()
@@ -166,7 +163,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
             key = self.get_key(url)
 
-            ws_session = WebSocketClientSession(loop=self.loop)
+            ws_session = WebSocketConnector(loop=self.loop)
             resp = yield from ws_session.ws_connect(url)
             resp.send_str('ask')
             msg = yield from resp.receive()
@@ -188,7 +185,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
             key = self.get_key(url)
 
-            ws_session = WebSocketClientSession(loop=self.loop)
+            ws_session = WebSocketConnector(loop=self.loop)
             resp = yield from ws_session.ws_connect(url)
             resp.send_str('ask')
             msg = yield from resp.receive()
@@ -209,7 +206,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
                                                       self.wshandler)
 
             key = self.get_key(url)
-            ws_session = WebSocketClientSession(loop=self.loop)
+            ws_session = WebSocketConnector(loop=self.loop)
 
             resp = yield from ws_session.ws_connect(url)
             resp.send_str('ask')
@@ -236,7 +233,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
                                                       self.wshandler)
 
             key = self.get_key(url)
-            ws_session = WebSocketClientSession(loop=self.loop)
+            ws_session = WebSocketConnector(loop=self.loop)
 
             resp = yield from ws_session.ws_connect(url)
             resp2 = yield from ws_session.ws_connect(url)
@@ -266,7 +263,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
 
             self.assertNotEqual(key, key2)
 
-            ws_session = WebSocketClientSession(loop=self.loop)
+            ws_session = WebSocketConnector(loop=self.loop)
 
             resp = yield from ws_session.ws_connect(url)
             resp2 = yield from ws_session.ws_connect(url2)
@@ -326,7 +323,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
                                                       self.wshandler)
 
             key = self.get_key(url)
-            ws_session = WebSocketClientSession(loop=self.loop)
+            ws_session = WebSocketConnector(loop=self.loop)
             resp = yield from ws_session.ws_connect(url)
             results = yield from asyncio.gather(
                 *[slow_task(resp, self.loop),
@@ -368,7 +365,7 @@ class TestWebSocketClientFunctional(unittest.TestCase):
                                                       self.wshandler)
 
             key = self.get_key(url)
-            ws_session = WebSocketClientSession(loop=self.loop, limit=1)
+            ws_session = WebSocketConnector(loop=self.loop, limit=1)
             resp = yield from ws_session.ws_connect(url)
             results = yield from asyncio.gather(
                 *[task(ws_session, url, self.loop, resp),
@@ -399,8 +396,8 @@ class TestClientSessionMngmnt(unittest.TestCase):
         @asyncio.coroutine
         def go():
             sess = aiohttp.ClientSession(loop=self.loop)
-            ws_session = WebSocketClientSession(loop=self.loop,
-                                                client_session=sess)
+            ws_session = WebSocketConnector(loop=self.loop,
+                                            client_session=sess)
             ws_session.detach()
             yield from ws_session.close()
 
@@ -412,8 +409,8 @@ class TestClientSessionMngmnt(unittest.TestCase):
         @asyncio.coroutine
         def go():
             sess = aiohttp.ClientSession(loop=self.loop)
-            ws_session = WebSocketClientSession(loop=self.loop,
-                                                client_session=sess)
+            ws_session = WebSocketConnector(loop=self.loop,
+                                            client_session=sess)
             yield from ws_session.close()
 
             self.assertTrue(sess.closed)

@@ -8,35 +8,31 @@ from urllib.parse import urlparse
 import aiohttp
 from aiohttp import websocket_client
 
-from aiowebsocketclient.client import ClientSession
-
 
 class ClientWebSocketResponse(websocket_client.ClientWebSocketResponse):
 
     def __init__(self, reader, writer, protocol,
-                 response, timeout, autoclose, autoping, loop,
-                 ws_client_session, key):
+                 response, timeout, autoclose, autoping, loop):
         super().__init__(reader, writer, protocol, response, timeout,
                          autoclose, autoping, loop)
-
-        self._key = key
-        self._ws_client_session = ws_client_session
+        self._key = (None, None, None)
+        self._ws_connector = None
 
     def __repr__(self):
         out = io.StringIO()
-        print('<ClientWebSocketResponse({}:{})>'.format(
-            self._key[0], self._key[1]), file=out)
+        print('<ClientWebSocketResponse({}:{}, ssl:{})>'.format(
+              self._key[0], self._key[1], self._key[2]), file=out)
         return out.getvalue()
 
     @asyncio.coroutine
     def release(self):
-        if self._ws_client_session is not None:
-            yield from self._ws_client_session._release(self._key, self)
+        if self._ws_connector is not None:
+            yield from self._ws_connector._release(self._key, self)
 
     @asyncio.coroutine
     def close(self):
-        if self._ws_client_session is not None:
-            yield from self._ws_client_session._release(
+        if self._ws_connector is not None:
+            yield from self._ws_connector._release(
                 self._key, self, should_close=True)
         else:
             yield from self._close()
@@ -46,13 +42,15 @@ class ClientWebSocketResponse(websocket_client.ClientWebSocketResponse):
         yield from super().close()
 
 
-class WebSocketClientSession(object):
+class WebSocketConnector:
 
     def __init__(self, *, conn_timeout=None, force_close=False, limit=None,
                  client_session=None, loop=None,
                  ws_response_class=ClientWebSocketResponse):
         """Manages socket pooling for multiple websocket connections.
+
         Based on aiohttp.ClientSession and aiohttp.BaseConnector.
+
         :param float conn_timeout: timeout for establishing connection
                                    (optional). Values ``0`` or ``None``
                                    mean no timeout
@@ -90,10 +88,9 @@ class WebSocketClientSession(object):
         self._limit = limit
         self._waiters = defaultdict(list)
         self._loop = loop
-        self._ws_response_class = ws_response_class
         if client_session is None:
-            client_session = ClientSession(
-                loop=self._loop, ws_response_class=self._ws_response_class)
+            client_session = aiohttp.ClientSession(
+                loop=self._loop, ws_response_class=ws_response_class)
         self._client_session = client_session
 
     @property
@@ -123,10 +120,8 @@ class WebSocketClientSession(object):
             for key, data in self._conns.items():
                 for websocket in data:
                     yield from websocket._close()
-
             for websocket in chain(*self._acquired.values()):
                 yield from websocket._close()
-
         finally:
             if self._client_session is not None:
                 self._client_session.close()
@@ -170,13 +165,11 @@ class WebSocketClientSession(object):
                 if self._conn_timeout:
                     websocket = yield from asyncio.wait_for(
                         self._create_connection(
-                            url, protocols, timeout, autoclose, autoping, self,
-                            key),
+                            url, protocols, timeout, autoclose, autoping, key),
                         self._conn_timeout, loop=self._loop)
                 else:
                     websocket = yield from self._create_connection(
-                        url, protocols, timeout, autoclose, autoping, self,
-                        key)
+                        url, protocols, timeout, autoclose, autoping, key)
 
             except asyncio.TimeoutError as exc:
                 raise aiohttp.ClientTimeoutError(
@@ -202,7 +195,7 @@ class WebSocketClientSession(object):
         acquired = self._acquired[key]
         try:
             acquired.remove(websocket)
-        except ValueError:  # pragma: no cover
+        except ValueError:
             pass
         else:
             if self._limit is not None and len(acquired) < self._limit:
@@ -226,15 +219,15 @@ class WebSocketClientSession(object):
 
     @asyncio.coroutine
     def _create_connection(self, url, protocols, timeout, autoclose, autoping,
-                           ws_client_session, key):
+                           key):
         resp = yield from self._client_session.ws_connect(
             url,
             protocols=protocols,
             timeout=timeout,
             autoclose=autoclose,
-            autoping=autoping,
-            ws_client_session=ws_client_session,
-            key=key)
+            autoping=autoping)
+        resp._ws_connector = self
+        resp._key = key
         return resp
 
     def detach(self):
