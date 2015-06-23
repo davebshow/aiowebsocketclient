@@ -46,7 +46,7 @@ class ClientWebSocketResponse(websocket_client.ClientWebSocketResponse):
 
 class WebSocketConnector:
 
-    def __init__(self, *, conn_timeout=None, force_close=False, limit=None,
+    def __init__(self, *, conn_timeout=None, force_close=False, limit=1024,
                  client_session=None, loop=None,
                  ws_response_class=ClientWebSocketResponse):
         """Manages socket pooling for multiple websocket connections.
@@ -63,7 +63,7 @@ class WebSocketConnector:
         :param int limit: limit for simultaneous connections to the same
                           endpoint.  Endpoints are the same if they are
                           have equal ``(host, port, is_ssl)`` triple.
-                          If *limit* is ``None`` the client has no limit
+                          Default is 1024
 
         :param aiohttp.client.ClientSession: Underlying HTTP session used to
                                              to establish websocket connections
@@ -87,9 +87,10 @@ class WebSocketConnector:
         self._acquired = defaultdict(list)
         self._conn_timeout = conn_timeout
         self._force_close = force_close
-        self._limit = limit
         self._waiters = defaultdict(list)
         self._loop = loop
+        self._limit = limit
+        self._semaphore = asyncio.Semaphore(value=self._limit, loop=self._loop)
         if client_session is None:
             client_session = aiohttp.ClientSession(
                 loop=self._loop, ws_response_class=ws_response_class)
@@ -155,11 +156,7 @@ class WebSocketConnector:
         ssl = scheme in ["https", "wss"]
         key = (host, port, ssl)
 
-        if self._limit is not None:
-            while len(self._acquired[key]) >= self._limit:
-                fut = asyncio.Future(loop=self._loop)
-                self._waiters[key].append(fut)
-                yield from fut
+        yield from self._semaphore.acquire()
 
         websocket = self._get(key)
         if websocket is None:
@@ -200,13 +197,7 @@ class WebSocketConnector:
         except ValueError:
             pass
         else:
-            if self._limit is not None and len(acquired) < self._limit:
-                waiters = self._waiters[key]
-                while waiters:
-                    waiter = waiters.pop(0)
-                    if not waiter.done():
-                        waiter.set_result(None)
-                        break
+            self._semaphore.release()
 
         if self._force_close:
             should_close = True
