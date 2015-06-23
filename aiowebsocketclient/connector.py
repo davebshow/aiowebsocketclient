@@ -28,6 +28,8 @@ class ClientWebSocketResponse(websocket_client.ClientWebSocketResponse):
     def release(self):
         if self._ws_connector is not None:
             yield from self._ws_connector._release(self._key, self)
+        else:
+            yield from self._close()
 
     @asyncio.coroutine
     def close(self):
