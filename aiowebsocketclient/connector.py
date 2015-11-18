@@ -1,5 +1,7 @@
 import asyncio
 import io
+import sys
+import traceback
 from collections import defaultdict
 from itertools import chain
 from urllib.parse import urlparse

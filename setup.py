@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name="aiowebsocketclient",
-    version="0.0.3",
+    version="0.0.4",
     url="",
     license="MIT",
     author="davebshow",
@@ -12,7 +12,7 @@ setup(
     long_description=open("README.txt").read(),
     packages=["aiowebsocketclient", "tests"],
     install_requires=[
-        "aiohttp==0.16.5"
+        "aiohttp==0.18.4"
     ],
     test_suite="tests",
     classifiers=[
