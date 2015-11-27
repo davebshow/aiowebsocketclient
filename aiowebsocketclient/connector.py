@@ -57,7 +57,7 @@ class WebSocketConnector:
 
         :param float conn_timeout: timeout for establishing connection
                                    (optional). Values ``0`` or ``None``
-                                   mean no timeout
+                                   mean no timeout (in seconds)
 
         :param bool force_close: close underlying sockets after
                                  releasing connection
@@ -94,8 +94,11 @@ class WebSocketConnector:
         self._limit = limit
         self._semaphore = asyncio.Semaphore(value=self._limit, loop=self._loop)
         if client_session is None:
+            connector = aiohttp.TCPConnector(
+                loop=self._loop, conn_timeout=conn_timeout)
             client_session = aiohttp.ClientSession(
-                loop=self._loop, ws_response_class=ws_response_class)
+                loop=self._loop, ws_response_class=ws_response_class,
+                connector=connector)
         self._client_session = client_session
 
     @property
@@ -162,19 +165,8 @@ class WebSocketConnector:
 
         websocket = self._get(key)
         if websocket is None:
-            try:
-                if self._conn_timeout:
-                    websocket = yield from asyncio.wait_for(
-                        self._create_connection(
-                            url, protocols, timeout, autoclose, autoping, key),
-                        self._conn_timeout, loop=self._loop)
-                else:
-                    websocket = yield from self._create_connection(
-                        url, protocols, timeout, autoclose, autoping, key)
-
-            except asyncio.TimeoutError as exc:
-                raise aiohttp.ClientTimeoutError(
-                    'Connection timeout to host %s:%s ssl:%s' % key) from exc
+            websocket = yield from self._create_connection(
+                url, protocols, timeout, autoclose, autoping, key)
 
         self._acquired[key].append(websocket)
         return websocket
